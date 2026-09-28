@@ -1,0 +1,533 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Castbox URL Replacer</title>
+<meta name="description" content="Extract Castbox episode IDs and convert URLs into clean Castbox episode URLs.">
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f6f8;
+  color: #1f2937;
+}
+
+.container {
+  width: min(100% - 30px, 1000px);
+  margin: 40px auto;
+}
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 25px;
+  box-shadow: 0 5px 25px rgba(0,0,0,.08);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin: 0 0 25px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  font-family: Consolas, monospace;
+}
+
+textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0 25px;
+}
+
+button {
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #111827;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: #000;
+}
+
+.btn-light {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn-light:hover {
+  background: #d1d5db;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.stat {
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.stat strong {
+  color: #111827;
+}
+
+.result-box {
+  margin-top: 25px;
+}
+
+.result-box textarea {
+  min-height: 300px;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.footer {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+  .container {
+    width: min(100% - 20px, 1000px);
+    margin: 20px auto;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+
+  button {
+    width: 100%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <h1>Castbox URL Replacer</h1>
+
+    <p class="subtitle">
+      Paste Castbox episode URLs below. The tool will remove the episode title
+      and keep only the Castbox channel ID + episode ID.
+    </p>
+
+    <label for="inputUrls">Castbox URLs</label>
+
+    <textarea
+      id="inputUrls"
+      placeholder="Paste Castbox URLs here, one URL per line...
+
+Example:
+https://castbox.fm/episode/Pinocchio%3A-Unstrung-(2026)-Vietsub---Thuy%E1%BA%BFt-Minh-id7430510-id1004812500
+https://castbox.fm/episode/[Phim-M%E1%BB%9Bi]-%E9%99%A4%E6%9A%B4%E4%B9%8B%E8%B7%AF-(2026)-Vietsub-id7430510-id1004812499"></textarea>
+
+    <div class="buttons">
+      <button class="btn-primary" onclick="convertUrls()">
+        Convert URLs
+      </button>
+
+      <button class="btn-secondary" onclick="copyResults()">
+        Copy Results
+      </button>
+
+      <button class="btn-light" onclick="downloadResults()">
+        Download TXT
+      </button>
+
+      <button class="btn-light" onclick="clearAll()">
+        Clear
+      </button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        Input: <strong id="inputCount">0</strong>
+      </div>
+
+      <div class="stat">
+        Converted: <strong id="successCount">0</strong>
+      </div>
+
+      <div class="stat">
+        Invalid: <strong id="errorCount">0</strong>
+      </div>
+    </div>
+
+    <div class="result-box">
+
+      <label for="outputUrls">Clean Castbox URLs</label>
+
+      <textarea
+        id="outputUrls"
+        readonly
+        placeholder="Converted URLs will appear here..."></textarea>
+
+      <div class="status" id="status">
+        Ready.
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Castbox URL Replacer — Client-side tool
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/*
+=========================================================
+CASTBOX URL REPLACER
+=========================================================
+
+Input:
+https://castbox.fm/episode/ANY-TITLE-id7430510-id1004812500
+
+Output:
+https://castbox.fm/episode/id7430510-id1004812500
+
+The tool extracts:
+idCHANNEL-idEPISODE
+
+Example:
+id7430510-id1004812500
+=========================================================
+*/
+
+function extractCastboxId(value) {
+
+  if (!value) {
+    return null;
+  }
+
+  value = value.trim();
+
+  /*
+   * Main pattern:
+   * id + digits + -id + digits
+   *
+   * Example:
+   * id7430510-id1004812500
+   */
+
+  const match = value.match(/(id\d+-id\d+)(?:[/?#]|$)/i);
+
+  if (match) {
+    return match[1];
+  }
+
+  /*
+   * Fallback:
+   * If the URL has extra characters after the episode ID,
+   * still extract the ID pair.
+   */
+
+  const fallback = value.match(/(id\d+-id\d+)/i);
+
+  if (fallback) {
+    return fallback[1];
+  }
+
+  return null;
+}
+
+
+function convertUrls() {
+
+  const input = document.getElementById("inputUrls").value;
+
+  const outputBox = document.getElementById("outputUrls");
+
+  const inputCount = document.getElementById("inputCount");
+
+  const successCount = document.getElementById("successCount");
+
+  const errorCount = document.getElementById("errorCount");
+
+  const status = document.getElementById("status");
+
+
+  if (!input.trim()) {
+
+    outputBox.value = "";
+
+    inputCount.textContent = "0";
+    successCount.textContent = "0";
+    errorCount.textContent = "0";
+
+    status.textContent = "No URLs entered.";
+
+    return;
+  }
+
+
+  /*
+   * Split by line.
+   * Empty lines are ignored.
+   */
+
+  const lines = input
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+
+  const results = [];
+
+  let success = 0;
+  let errors = 0;
+
+
+  lines.forEach(line => {
+
+    const castboxId = extractCastboxId(line);
+
+    if (castboxId) {
+
+      results.push(
+        "https://castbox.fm/episode/" + castboxId
+      );
+
+      success++;
+
+    } else {
+
+      /*
+       * Invalid URLs are not included in output.
+       */
+
+      errors++;
+    }
+
+  });
+
+
+  outputBox.value = results.join("\n");
+
+
+  inputCount.textContent = lines.length;
+  successCount.textContent = success;
+  errorCount.textContent = errors;
+
+
+  if (errors > 0) {
+
+    status.textContent =
+      "Converted " + success +
+      " URL(s). " + errors +
+      " invalid URL(s) were skipped.";
+
+  } else {
+
+    status.textContent =
+      "Successfully converted " + success + " URL(s).";
+
+  }
+}
+
+
+async function copyResults() {
+
+  const outputBox = document.getElementById("outputUrls");
+
+  const status = document.getElementById("status");
+
+  if (!outputBox.value.trim()) {
+
+    status.textContent =
+      "Nothing to copy. Convert URLs first.";
+
+    return;
+  }
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      outputBox.value
+    );
+
+    status.textContent =
+      "Results copied to clipboard.";
+
+  } catch (error) {
+
+    /*
+     * Fallback for browsers where Clipboard API
+     * is unavailable.
+     */
+
+    outputBox.select();
+    document.execCommand("copy");
+
+    status.textContent =
+      "Results copied to clipboard.";
+
+  }
+}
+
+
+function downloadResults() {
+
+  const output = document.getElementById("outputUrls").value;
+
+  const status = document.getElementById("status");
+
+
+  if (!output.trim()) {
+
+    status.textContent =
+      "Nothing to download. Convert URLs first.";
+
+    return;
+  }
+
+
+  const blob = new Blob(
+    [output],
+    {
+      type: "text/plain;charset=utf-8"
+    }
+  );
+
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+
+  a.href = url;
+
+  a.download = "castbox-clean-urls.txt";
+
+  document.body.appendChild(a);
+
+  a.click();
+
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+
+
+  status.textContent =
+    "TXT file downloaded.";
+}
+
+
+function clearAll() {
+
+  document.getElementById("inputUrls").value = "";
+
+  document.getElementById("outputUrls").value = "";
+
+  document.getElementById("inputCount").textContent = "0";
+
+  document.getElementById("successCount").textContent = "0";
+
+  document.getElementById("errorCount").textContent = "0";
+
+  document.getElementById("status").textContent =
+    "Ready.";
+}
+
+
+/*
+=========================================================
+OPTIONAL:
+Allow Ctrl + Enter to convert
+=========================================================
+*/
+
+document
+  .getElementById("inputUrls")
+  .addEventListener("keydown", function(event) {
+
+    if (
+      event.ctrlKey &&
+      event.key === "Enter"
+    ) {
+
+      convertUrls();
+
+    }
+
+  });
+
+</script>
+
+</body>
+</html>
+```
